@@ -1,0 +1,25 @@
+{
+  "name": "@ksinb/odd-counter",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ksinb/odd-counter.git",
+    "directory": "packages/odd-counter"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "unpkg": "dist/index.min.js",
+  "jsdelivr": "dist/index.min.js",
+  "types": "lib/index.d.ts",
+  "svelte": "lib/index.js",
+  "files": [
+    "dist",
+    "lib"
+  ]
+}

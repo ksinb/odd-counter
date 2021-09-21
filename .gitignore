@@ -1,4 +1,7 @@
-/node_modules/
-/public/build/
-
+*.log
 .DS_Store
+node_modules
+dist
+lib
+package-lock.json
+tsconfig.tsbuildinfo

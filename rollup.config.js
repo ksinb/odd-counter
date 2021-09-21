@@ -1,83 +1,175 @@
+// @ts-check
+import fs from 'fs-extra';
+import path from 'path';
+import _ from 'lodash';
 import svelte from 'rollup-plugin-svelte';
-import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
-import livereload from 'rollup-plugin-livereload';
+import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
+import babel from '@rollup/plugin-babel';
+import vue from 'rollup-plugin-vue';
 import { terser } from 'rollup-plugin-terser';
-import sveltePreprocess from 'svelte-preprocess';
-import typescript from '@rollup/plugin-typescript';
-import css from 'rollup-plugin-css-only';
+import postcss from 'rollup-plugin-postcss';
+import replace from '@rollup/plugin-replace';
+// import visualizer from 'rollup-plugin-visualizer';
 
 const production = !process.env.ROLLUP_WATCH;
+const umd = process.env.UMD;
 
-function serve() {
-	let server;
+const packages = fs.readdirSync(path.resolve(__dirname, 'packages'));
 
-	function toExit() {
-		if (server) server.kill(0);
-	}
+const configs = packages
+  .map((key) => {
+    console.log('key', key);
 
-	return {
-		writeBundle() {
-			if (server) return;
-			server = require('child_process').spawn('npm', ['run', 'start', '--', '--dev'], {
-				stdio: ['ignore', 'inherit', 'inherit'],
-				shell: true
-			});
+    const pkg = fs.readJsonSync(`./packages/${key}/package.json`);
+    if (pkg.private) return [];
 
-			process.on('SIGTERM', toExit);
-			process.on('exit', toExit);
-		}
-	};
-}
+    const inputFile = path.resolve('packages', key, 'lib/index.js');
+    const umdName = key.startsWith('plugin-')
+      ? _.camelCase(`bytemd-${key}`)
+      : 'bytemd';
 
-export default {
-	input: 'src/main.ts',
-	output: {
-		sourcemap: true,
-		format: 'iife',
-		name: 'app',
-		file: 'public/build/bundle.js'
-	},
-	plugins: [
-		svelte({
-			preprocess: sveltePreprocess({ sourceMap: !production }),
-			compilerOptions: {
-				// enable run-time checks when not in production
-				dev: !production
-			}
-		}),
-		// we'll extract any component CSS out into
-		// a separate file - better for performance
-		css({ output: 'bundle.css' }),
+    /** @type {import('rollup').RollupOptions} */
+    const common = {
+      input: inputFile,
+      plugins: [
+        commonjs(),
+        svelte({
+          // https://github.com/sveltejs/template/issues/193#issuecomment-737743675
+          emitCss: false,
+          compilerOptions: {
+            dev: !production,
+          },
+        }),
+        vue(),
+        resolve({
+          browser: true,
+          dedupe: ['svelte'],
+        }),
+        json(),
+        replace({
+          preventAssignment: true, // fix warning
+          'process.env.NODE_ENV': JSON.stringify(
+            production ? 'production' : 'development'
+          ),
+        }),
+      ],
+      watch: {
+        clearScreen: false,
+      },
+    };
 
-		// If you have external dependencies installed from
-		// npm, you'll most likely need these plugins. In
-		// some cases you'll need additional configuration -
-		// consult the documentation for details:
-		// https://github.com/rollup/plugins/tree/master/packages/commonjs
-		resolve({
-			browser: true,
-			dedupe: ['svelte']
-		}),
-		commonjs(),
-		typescript({
-			sourceMap: !production,
-			inlineSources: !production
-		}),
+    /** @type {import('rollup').RollupOptions} */
+    const config = {
+      ...common,
+      output: [
+        {
+          format: 'es',
+          sourcemap: true,
+          file: path.resolve('packages', key, pkg.module),
+        },
+        {
+          format: 'cjs',
+          sourcemap: true,
+          file: path.resolve('packages', key, pkg.main),
+          exports: 'auto', // fix warning
+        },
+      ],
+      external: [
+        /^codemirror-ssr/,
+        'hast-util-sanitize/lib/github.json',
+        ...Object.keys(pkg.dependencies || {}),
+        ...Object.keys(pkg.peerDependencies || {}),
+      ],
+    };
 
-		// In dev mode, call `npm run start` once
-		// the bundle has been generated
-		!production && serve(),
+    /** @type {import('rollup').OutputOptions} */
+    const umdOutputOption = {
+      format: 'umd',
+      name: umdName,
+      sourcemap: true,
+      inlineDynamicImports: true,
+    };
 
-		// Watch the `public` directory and refresh the
-		// browser on changes when not in production
-		!production && livereload('public'),
+    /** @type {import('rollup').RollupOptions} */
+    const umdConfig = {
+      ...common,
+      output: [
+        {
+          ...umdOutputOption,
+          file: path.resolve('packages', key, 'dist/index.js'),
+        },
+        {
+          ...umdOutputOption,
+          file: path.resolve('packages', key, 'dist/index.min.js'),
+          plugins: [terser()],
+        },
+      ],
+      external: Object.keys(pkg.peerDependencies || {}),
+    };
 
-		// If we're building for production (npm run build
-		// instead of npm run dev), minify
-		production && terser()
-	],
-	watch: {
-		clearScreen: false
-	}
+    /** @type {import('rollup').RollupOptions} */
+    const es5Config = {
+      ...common,
+      input: path.resolve('packages', key, 'lib/index.js'),
+      output: [
+        {
+          ...umdOutputOption,
+          file: path.resolve('packages', key, 'dist/index.es5.js'),
+        },
+        {
+          ...umdOutputOption,
+          file: path.resolve('packages', key, 'dist/index.es5.min.js'),
+          plugins: [terser()],
+        },
+      ],
+      plugins: [
+        ...common.plugins,
+        babel({
+          babelHelpers: 'runtime',
+          extensions: ['.js', '.mjs', '.html', '.svelte'],
+        }),
+      ],
+    };
+
+    // return [es5Config];
+
+    if (umd) {
+      return [config, umdConfig, es5Config];
+    } else {
+      return [config];
+    }
+  })
+  .flat();
+
+/** @type {import('rollup').RollupOptions} */
+const styleCommon = {
+  input: 'packages/bytemd/styles/index.scss',
+  output: {
+    file: 'style.js', // We don't need this file
+  },
 };
+
+/** @type {import('rollup').RollupOptions[]} */
+const styleConfigs = [
+  {
+    ...styleCommon,
+    plugins: [
+      postcss({
+        extract: path.resolve(__dirname, 'packages/bytemd/dist/index.css'),
+      }),
+    ],
+  },
+  {
+    ...styleCommon,
+    plugins: [
+      postcss({
+        extract: path.resolve(__dirname, 'packages/bytemd/dist/index.min.css'),
+        minimize: true,
+      }),
+    ],
+  },
+];
+
+export default [...configs];
