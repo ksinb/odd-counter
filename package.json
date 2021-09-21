@@ -1,6 +1,6 @@
 {
   "name": "@ksinb/odd-counter",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "*Psst — looking for a more complete solution? Check out [SvelteKit](kit.svelte.dev), the official framework for building web applications of all sizes, with a beautiful development experience and flexible filesystem-based routing.*",
   "scripts": {
     "build": "tsc --build && node scripts/process.mjs && rollup -c",

@@ -1,6 +1,6 @@
 {
-  "name": "@ksinb/odd-couthnter-vue",
-  "version": "0.0.1",
+  "name": "@ksinb/odd-counter-vue",
+  "version": "0.0.2",
   "description": "",
   "author": "",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "lib"
   ],
   "dependencies": {
-    "odd-counter": "^0.0.1"
+    "@ksinb/odd-counter": "^0.0.2"
   },
   "peerDependencies": {
     "vue": "^2.0.0"

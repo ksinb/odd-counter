@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import * as Counter from 'odd-counter';
+import * as Counter from '@ksinb/odd-counter';
 
 export interface OddCounterProps {
   count: number;
