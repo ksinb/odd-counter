@@ -9,6 +9,9 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "workspaces": [
     "packages/*"
   ],
