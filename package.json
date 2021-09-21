@@ -1,6 +1,5 @@
 {
   "name": "@ksinb/odd-counter",
-  "private": true,
   "version": "0.0.1",
   "description": "*Psst — looking for a more complete solution? Check out [SvelteKit](kit.svelte.dev), the official framework for building web applications of all sizes, with a beautiful development experience and flexible filesystem-based routing.*",
   "scripts": {
